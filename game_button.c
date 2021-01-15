@@ -1,363 +1,221 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wiringPi.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <semaphore.h>
-#include <errno.h>
-//#include <sys/types.h>
-//#include <sys/stat.h>
-#include <fcntl.h>
 #include <time.h>
 
-#define LED_R	3
-#define LED_Y	2
-#define LED_G	0
 
-#define SW_R	6
-#define SW_Y	5
-#define SW_G	4
-#define SW_W	27
+#define LED_R 3
+#define LED_Y 2
+#define LED_G 0
+#define SW_R 6
+#define SW_Y 5 
+#define SW_G 4
+#define SW_W 27
+
 
 void init(void);
 void off(void);
-void blink_success(void);
-void blink_fail(void);
-
-void R(void);
-void Y(void);
-void G(void);
-void W(void);
-
-void gamestart(void);
-
-int A[5];
-
-int B_input=0;
-int B[6];
-
-sem_t RYGW;
-
-sem_t R_B;
-sem_t Y_B;
-sem_t G_B;
-sem_t W_B;
+void blink(void);
+void fail(void);
 
 
-int click_stop;
-int end;
 
-int main(void){
+int main(void)
+{
+   
+   int i;
+   int A[5];
+   int k=0;
+   int B[5];
+   int j = 0;
+   int round =1; 
+   int success = 1;
+   int input_b = 1;
+   
+   init();
+  
+   srand(time(NULL));
 
-	int i;
-	init();
+   for (i = 0; i < 5; i++) {
+      A[i] = (rand() % 3) + 1;
+   }
 
-	srand(time(NULL));
-	for( i = 0 ; i < 5 ; i++){
-		A[i] = rand()%3 + 1;
+   	blink();
+	delay(150);
+while(round<6 ){
+
+  for (i = 0; i<round; i++){
+      
+      if (A[i] == 1) { //red
+	  digitalWrite(LED_R,1);
+	  delay(200);
+	  digitalWrite(LED_R,0);
+      }
+      else if (A[i] ==2){ //yellow
+	  digitalWrite(LED_Y,1);
+	  delay(200);
+	  digitalWrite(LED_Y,0);
+      }
+      else if (A[i]==3){//green
+     	  digitalWrite(LED_G,1);
+	  delay(200);
+	  digitalWrite(LED_G,0);
+	      
+      }
+   delay(100);   
+  }
+ 
+  input_b = 1;
+
+j=0;
+while(input_b == 1){
+
+    if(digitalRead(SW_R)==0)
+    {
+//	printf("R\n");
+	digitalWrite(LED_R , 1 );
+	delay(100);
+	if(j<5){
+	    B[j++]=1;
 	}
+	digitalWrite(LED_R,0);
 
-	sem_init(&R_B,0,0);
-	sem_init(&Y_B,0,0);	
-	sem_init(&G_B,0,0);
-	sem_init(&W_B,0,0);
-	sem_init(&RYGW,0,1);
-
-	blink_success();
-	delay(250);
-
-	gamestart();
-
-	off();
-	sem_destroy(&R_B);
-	sem_destroy(&Y_B);
-	sem_destroy(&G_B);
-	sem_destroy(&W_B);
-	sem_destroy(&RYGW);
-
-	return 0;
-}
-void gamestart(void){
-
-	int i;
-	int status;
-	end=1;
-	int currentRound = 1;
-	pthread_t sw[4];
-	click_stop = 1;
-
-	pthread_create(&sw[0],NULL,(void*)&R,NULL);
-	pthread_create(&sw[1],NULL,(void*)&Y,NULL);
-	pthread_create(&sw[2],NULL,(void*)&G,NULL);
-	pthread_create(&sw[3],NULL,(void*)&W,NULL);
-
-	//	th_end = 1;
-
-	while( currentRound < 6 && end == 1){
-
-		//click_stop=1;
-		B_input=0;
-
-		//if(currentRound != 1 ){
-		//sem_wait(RYGW);
-		//}
-
-		delay(250);
-
-
-		for( i = 0 ; i < currentRound ; i++){
-			if( A[i] == 1){
-				digitalWrite(LED_R,1);
-				delay(150);
-				digitalWrite(LED_R,0);
-			}else if(A[i] == 2){
-				digitalWrite(LED_Y,1);
-				delay(150);
-				digitalWrite(LED_Y,0);
-			}else if(A[i] == 3){
-				digitalWrite(LED_G,1);
-				delay(150);
-				digitalWrite(LED_G,0);
-			}
-			delay(100);
-		}
-
-		//pthread_create(&sw[0],NULL,(void*)&R,NULL);
-		//pthread_create(&sw[1],NULL,(void*)&Y,NULL);
-		//pthread_create(&sw[2],NULL,(void*)&G,NULL);
-		//pthread_create(&sw[3],NULL,(void*)&W,NULL);
-
-		//sem_post(RYGW);
-		click_stop=0;
-
-		sem_post(&R_B);
-		sem_post(&Y_B);
-		sem_post(&G_B);
-
-		sem_wait(&W_B);
-
-		//th_end =0;
-		//click_stop=1;
-
-		if( B_input == currentRound ){
-			for(i=0 ; i< currentRound ; i++ ){
-				if( B[i] != A[i] ){
-					delay(50);
-					printf("click X\n");
-					blink_fail();
-					end = 0;
-					break;
-				}
-			}
-		}else{
-			delay(50);
-		//	printf("a lot b %d c %d\n",B_input,currentRound);
-			blink_fail();
-			end = 0;
-		}
-
-		currentRound++;
-
+    }
+    else if ( digitalRead(SW_Y)==0)
+    {
+//	printf("Y\n");
+	digitalWrite(LED_Y,1);
+	delay(100);
+	if(j<5){
+	    B[j++]=2;
 	}
-
-	if(currentRound==6 && end != 0){
-		end = 0;
-		
-		delay(100);
-		blink_success();
+	digitalWrite(LED_Y,0);
+    }
+    else if (digitalRead(SW_G) == 0)
+    {
+//	printf("G\n");
+	digitalWrite(LED_G,1);
+	delay(100);
+	if (j<5){
+	     B[j++]=3;
 	}
-		click_stop=0;
-
-		sem_post(&R_B);
-		sem_post(&Y_B);
-		sem_post(&G_B);
-		
-
-	for( i=0 ; i<4 ; i++ ) {
-		pthread_join(sw[i],(void*)&status);
-	}
+	digitalWrite(LED_G,0);
+    }
+    else if (digitalRead(SW_W)==0)
+    {	input_b = 0;
+//	printf("W %d\n", input_b);
+   	break;	
+    }
+    off();
 
 }
 
+//printf("df");
 
-void R(void){ 
+if(round == j){
+for (i=0;i<j;i++)
+{
+    if(A[i] != B[i])
+    { 
+	success = 0;
+//	fail();
+    	break;
+    }
 
-	while(end==1){
-
-		if(click_stop==1){
-			sem_wait(&R_B);
-		}
-		else{
-			if(digitalRead(SW_R) == 0){
-
-				digitalWrite(LED_R,1);
-				//delay(50);
-				while(digitalRead(SW_R) == 0){
-					sleep(0.5);
-				}
-
-				digitalWrite(LED_R,0);
-
-				sem_wait(&RYGW);
-
-				if( B_input < 6 ){
-					B[ B_input ] = 1;
-					B_input = B_input+1;
-		//			printf("R %d\n",B_input);
-				}
-				sem_post(&RYGW);
-			}
-		}
-	}	
+}}else{
+success = 0;
 }
 
-void Y(void){
-	while(end==1){
-		if(click_stop==1){
-		sem_wait(&Y_B);
-		}else{
-			if(digitalRead(SW_Y) == 0){
-				digitalWrite(LED_Y,1);
-				//delay(50);
-
-				while(digitalRead(SW_Y) == 0){
-					sleep(0.5);
-				}
-
-				digitalWrite(LED_Y,0);
-
-				sem_wait(&RYGW);
-
-				if( B_input < 6 ){
-					B[ B_input] = 2;
-					B_input = B_input+1;
-		//			printf("Y %d\n",B_input);
-				}
-
-				sem_post(&RYGW);
-			}
-		}
-	}
+if(success == 0 )
+{
+    fail();
+    break;
+}else {
+round++;
 }
 
-void G(void){
-	while(end==1){
-		if(click_stop==1){
-		sem_wait(&G_B);
-		}else{
-			if(digitalRead(SW_G)==0){
-				digitalWrite(LED_G,1);
-				//delay(50);
-
-				while(digitalRead(SW_G) == 0){
-					sleep(0.5);
-				}
-
-				digitalWrite(LED_G,0);
-
-				sem_wait(&RYGW);
-				if(B_input < 6){
-					B[B_input] = 3;
-					B_input = B_input+1;
-		//			printf("G %d\n",B_input);
-				}
-				sem_post(&RYGW);
-			}
-		}
-	}
+if(round == 6 )
+{
+    blink();
+    break;
 }
 
-void W(void){
+}
+return 0;
 
-	while(end==1){
-		if(click_stop ==0){
-			if(digitalRead(SW_W)==0){
-
-				while(digitalRead(SW_W) == 0){
-					sleep(0.5);
-				}
-
-				click_stop = 1;
-				sem_wait(&RYGW);
-
-				sem_post(&W_B);
-				sem_post(&RYGW);
-			}
-		}
-	}
 }
 
 void init(void)
 {
-	if(wiringPiSetup() == -1)
-	{
-		exit(1);
-	}
+   if (wiringPiSetup() == -1)
+   {
+      exit(1);
+   }
 
-	pinMode(SW_R,INPUT);
-	pinMode(SW_Y,INPUT);
-	pinMode(SW_G,INPUT);
-	pinMode(SW_W,INPUT);
+   pinMode(SW_R, INPUT);
+   pinMode(SW_Y, INPUT);
+   pinMode(SW_G, INPUT);
+   pinMode(SW_W, INPUT);
+  
+   pinMode(LED_R, OUTPUT);
+   pinMode(LED_Y, OUTPUT);
+   pinMode(LED_G, OUTPUT);
 
-	pinMode(LED_R,OUTPUT);
-	pinMode(LED_Y,OUTPUT);
-	pinMode(LED_G,OUTPUT);
-
-	off();
+   off();
 }
 
 void off(void)
 {
-	digitalWrite(LED_R,0);
-	digitalWrite(LED_Y,0);
-	digitalWrite(LED_G,0);
+   digitalWrite(LED_R, 0);
+   digitalWrite(LED_Y, 0);
+   digitalWrite(LED_G, 0);
 }
 
-
-void blink_success(void)
+void blink(void)
 {
-	int i=0;
+   int i = 0;
 
-	while(i<3)
-	{
-		digitalWrite(LED_R, 1);
-		delay(250);
-		digitalWrite(LED_R, 0);
+   while (i < 3)
+   {
+      digitalWrite(LED_R, 1);
+      delay(250);
+      digitalWrite(LED_R, 0);
 
-		digitalWrite(LED_Y,1);
-		delay(250);
-		digitalWrite(LED_Y,0);
+      digitalWrite(LED_Y, 1);
+      delay(250);
+      digitalWrite(LED_Y, 0);
 
-		digitalWrite(LED_G,1);
-		delay(250);
-		digitalWrite(LED_G,0);
+      digitalWrite(LED_G, 1);
+      delay(250);
+      digitalWrite(LED_G, 0);
 
-		delay(250);
-
-		i++;
-	}
+      i++;
+   }
+   off();
 }
 
-void blink_fail(void)
+void fail(void)
 {
-	int i=0;
-	while(i<3)
-	{
-		digitalWrite(LED_R,1);
-		delay(50);
-		digitalWrite(LED_R,0);
+   int i = 0;
+   while (i < 3)
+   {
+      digitalWrite(LED_R, 1);
+      delay(100);
+      digitalWrite(LED_R, 0);
 
-		digitalWrite(LED_Y,1);
-		delay(50);
-		digitalWrite(LED_Y,0);
+      digitalWrite(LED_Y, 1);
+      delay(100);
+      digitalWrite(LED_Y, 0);
 
-		digitalWrite(LED_G,1);
-		delay(50);
-		digitalWrite(LED_G,0);
+      digitalWrite(LED_G, 1);
+      delay(100);
+      digitalWrite(LED_G, 0);
 
+    
+      delay(250);
 
-		delay(300);
+      i++;
+   }
 
-		i++;
-	}
+   off();
 }
